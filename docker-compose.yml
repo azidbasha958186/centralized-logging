@@ -1,0 +1,35 @@
+version: '3.8'
+services:
+  log-server:
+    build: ./log-server
+    ports:
+      - "9000:9000"
+    volumes:
+      - ./log-server/data:/app/data
+    environment:
+      - SERVER_ADDR=:9000
+      - STORAGE_FILE=/app/data/logs.jsonl
+
+  log-collector:
+    build: ./log-collector
+    ports:
+      - "1514:1514/udp"
+      - "1515:1515"
+    depends_on:
+      - log-server
+    environment:
+      - COLLECTOR_UDP_ADDR=:1514
+      - COLLECTOR_TCP_ADDR=:1515
+      - LOG_SERVER_URL=http://log-server:9000/ingest
+      - WORKER_COUNT=4
+      - QUEUE_SIZE=100
+
+  client:
+    build: ./client
+    depends_on:
+      - log-collector
+    environment:
+      - COLLECTOR_HOST=log-collector
+      - COLLECTOR_PORT=1514
+      - CLIENT_COUNT=3
+      - INTERVAL_MS=1200
